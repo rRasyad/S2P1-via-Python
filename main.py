@@ -273,7 +273,7 @@ class main:
         id = input("Insert identity number: ")
         pw = input("Insert password: ")
 
-        clear_terminal()
+        helpers.clear_terminal()
         self.cu = Lecturer(id, pw)
         match self.cu.status:
             case True:
@@ -296,7 +296,7 @@ class main:
         )
 
         choice = int(input(option))
-        clear_terminal()
+        helpers.clear_terminal()
         if choice > class_count:
             print("Invalid!\n")
             return self.class_section()
@@ -327,7 +327,7 @@ class main:
         )
 
         choice = int(input("\n[ctrl + c] to exit\n[1 - 3] choose one\n> "))
-        clear_terminal()
+        helpers.clear_terminal()
         match choice:
             case 1:
                 return self.student_attandence_section()
@@ -359,7 +359,7 @@ class main:
         choice = input(
             "\n[ctrl + c] to exit\n[0] back to main menu\n[r] to reset password\n> "
         )
-        clear_terminal()
+        helpers.clear_terminal()
         match choice.lower():
             case "0":
                 return self.main_menu_section()
@@ -375,7 +375,7 @@ class main:
         new = input("Insert New Password: ")
         conf = input("Password confirmation: ")
 
-        clear_terminal()
+        helpers.clear_terminal()
         if new != conf:
             print("\nPassword not match!")
         else:
@@ -400,7 +400,7 @@ class main:
         )
 
         choice = int(input(option))
-        clear_terminal()
+        helpers.clear_terminal()
         if choice == 0:
             return self.main_menu_section()
         elif choice > option_count:
@@ -431,7 +431,7 @@ class main:
                 "\n[ctrl + c] to exit\n[0] back to main menu\n[1] back to student list\n> "
             )
         )
-        clear_terminal()
+        helpers.clear_terminal()
         match choice:
             case 0:
                 return self.main_menu_section()
@@ -460,7 +460,7 @@ class main:
         except ValueError:
             pass
 
-        clear_terminal()
+        helpers.clear_terminal()
         if selected_date is None:
             print("Only this [dd/mm/yyyy] format are allowed\n")
             pass
@@ -510,7 +510,7 @@ class main:
         )
 
         inputed = input(option)
-        clear_terminal()
+        helpers.clear_terminal()
         if inputed == "0":
             return self.main_menu_section()
 
@@ -543,7 +543,7 @@ class main:
             sep="\n",
         )
         choice = int(input("> "))
-        clear_terminal()
+        helpers.clear_terminal()
         if choice > 4 or 1 > choice:
             print("Invalid choice!\n")
             return self.student_attandence_section3(date, selected)
@@ -585,7 +585,7 @@ class main:
 
 
 if __name__ == "__main__":
-    clear_terminal()
+    helpers.clear_terminal()
     try:
         program = main()
         program.login_section()
