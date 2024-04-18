@@ -3,7 +3,7 @@ DEBUG = False
 def clear_terminal():
     print("\033c")
 
-def console_log(context):
+def console_log(*context):
     if DEBUG:
         print(context)
 

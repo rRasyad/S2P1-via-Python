@@ -1,10 +1,15 @@
 import calendar
 from datetime import datetime, time
-from utilities import clear_terminal, console_log, not_implemented
+import helpers
 import mysql.connector as mysql
 
 
+# The Database class is a parent model 
+# for ease of connection to the database.
 class Database:
+
+    # This constructor defines public attributes 
+    # such as conn for the database connection and cur for the cursor.
     def __init__(self):
         config = {
             "host": "localhost",
@@ -14,23 +19,31 @@ class Database:
         }
         self.conn = mysql.connect(**config)
         self.cur = self.conn.cursor()
+        # A cursor in MySQL Connector is an object 
+        # that helps execute queries and fetch records from the database
         return
 
 
+# The Lecturer class is a child model 
+# for the handling of all data related to the lecturer table.
 class Lecturer(Database):
 
+    # This consturctor acts as a login process
     def __init__(self, nid, password):
+
         super().__init__()
+        # It is used to call the constructor of the parent class. 
+        # This allows the subclass to inherit and initialize superclass attributes.
 
         q = "SELECT * FROM lecturers WHERE nid = %s"
         self.cur.execute(q, (nid,))
         result = self.cur.fetchone()
-        # console_log(result)  # Print the result
+        helpers.console_log(result) # Print the value in debug mode
 
-        if result is None:
+        if result is None: # case when user not found
             self.status = None
             return
-        elif password != result[-1]:
+        elif password != result[-1]: # case when password incorect
             self.status = False
             return
         else:
@@ -42,10 +55,13 @@ class Lecturer(Database):
                 self.__email,
                 self.__adress,
                 self.__password,
-            ) = result
+            ) = result # insert all data to private attributes
             self.status = True
             return
 
+    # Properties provide a way to encapsulate access 
+    # to instance variables, enabling validation and computation on access.
+    # Property getter
     @property
     def nid(self):
         return self.__nid
@@ -70,11 +86,29 @@ class Lecturer(Database):
     def adress(self):
         return self.__adress
 
+    # Property setter
+    @property.setter
+    def set_password(self, old, new):
+        if old != self.__password:
+            return False
+
+        self.__reset_password(new)
+        self.__password = new
+        return True
+
+    def __reset_password(self, new_password):
+        q = """UPDATE lecturers
+        SET password = %s
+        WHERE nid = %s"""
+        self.cur.execute(q, (new_password, self.__nid))
+        self.conn.commit()
+        return
+
     def get_class(self):
         q = "SELECT * FROM classes WHERE nid = %s"
         self.cur.execute(q, (self.__nid,))
         results = self.cur.fetchall()
-        # console_log(results)  # Print the result
+        # helpers.console_log(results)  # Print the result
 
         classes = []
         for result in results:
@@ -110,14 +144,6 @@ class Lecturer(Database):
         self.cur.execute(q, (class_id, self.__nid))
         self.conn.commit()
         return self.get_today_attendance(class_id)
-
-    def reset_password(self, new_password):
-        q = """UPDATE lecturers
-        SET password = %s
-        WHERE nid = %s"""
-        self.cur.execute(q, (new_password, self.__nid))
-        self.conn.commit()
-        return
 
     def get_students(self, class_id):
         q = """
@@ -184,7 +210,7 @@ class Lecturer(Database):
         """
         self.cur.execute(q, (date, class_id))
         results = self.cur.fetchall()
-        # console_log(results)
+        # helpers.console_log(results)
         return results
 
     def get_attendance_overview(self, date, class_id, student_count):
@@ -236,6 +262,7 @@ class Lecturer(Database):
         self.conn.commit()
         return
 
+
 class main:
     # def __init__(self):
     #     self.cu = Lecturer("0885060416", "123")
@@ -275,7 +302,7 @@ class main:
             return self.class_section()
 
         self.cc = available_classes[(choice - 1)]
-        # console_log(self.cc)  # Print the result
+        # helpers.console_log(self.cc)  # Print the result
         return self.main_menu_section()
 
     def main_menu_section(self):
@@ -329,10 +356,12 @@ class main:
         self.cu.get_class_list()
         # TODO Create An Overview for this month
 
-        choice = input("\n[ctrl + c] to exit\n[0] back to main menu\n[r] to reset password\n> ")
+        choice = input(
+            "\n[ctrl + c] to exit\n[0] back to main menu\n[r] to reset password\n> "
+        )
         clear_terminal()
         match choice.lower():
-            case '0':
+            case "0":
                 return self.main_menu_section()
             case "r":
                 return self.reset_password_section()
@@ -342,20 +371,20 @@ class main:
 
     def reset_password_section(self):
         print("-- RESET PASSWORD --\n")
-        opw = input("Insert Old Password: ")
-        npw = input("Insert New Password: ")
-        cpw = input("Password confirmation: ")
+        old = input("Insert Old Password: ")
+        new = input("Insert New Password: ")
+        conf = input("Password confirmation: ")
 
         clear_terminal()
-        if opw != self.cu._Lecturer__password:
-            print("\nIncorrect Password!")
-        elif npw != cpw:
+        if new != conf:
             print("\nPassword not match!")
         else:
-            self.cu.reset_password(npw)
-            print("\nPassword changed successfully!")
-            return self.profile_section()
-
+            result = self.cu.set_password(old, new)
+            if result:
+                print("\nPassword changed successfully!")
+                return self.profile_section()
+            else:
+                print("\nFailed to change password")
         return self.reset_password_section()
 
     def student_list_section(self):
@@ -482,7 +511,7 @@ class main:
 
         inputed = input(option)
         clear_terminal()
-        if inputed == '0':
+        if inputed == "0":
             return self.main_menu_section()
 
         selected_students = []
@@ -560,26 +589,6 @@ if __name__ == "__main__":
     try:
         program = main()
         program.login_section()
-        # # program.student_attandence_section()
-        # program.student_attandence_section2(datetime(2024, 4, 14))
-        # dump3 = [(32, "0623309489"), (None, "1552384338")]
-        # program.student_attandence_section3(datetime(2024, 4, 14), dump3)
-        # program.student_detail_section("0550095906")
-        # program.student_list_section()
-        # program.reset_password_section()
-        # print(program.cu.nid)
-        # # program.class_section()
-        # program.main_menu_section()
-
-        # l = Lecturer("0885060416", "12345")
-        # print(l.get_attendance_overview(datetime(2024, 4, 17).date(), "2CS1", 30))
-        # # print(l.get_today_attendance("2CS1"))
-        # # print(l.store_today_attendance("2CS1"))
-        # # # print(l.status)
-        # # print(l.get_class())
-        # # print(l.get_students("2CS1"))
-        # # print(l.get_student_detail("3404163975"))
-        # print(l.get_student_overview("6890274285"))
 
     except ValueError:
         print("Only integers are allowed")
