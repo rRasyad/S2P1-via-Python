@@ -1,13 +1,14 @@
 -- Active: 1708887434952@@127.0.0.1@3306
 -- Create database
-CREATE DATABASE db_s2_project_1
+CREATE DATABASE db_s2p1
 DEFAULT CHARACTER SET = 'utf8mb4';
 
--- SELECT @@global.time_zone, @@session.time_zone;
+USE db_s2p1;
 
--- SET time_zone = '+07:00';
+SELECT @@global.time_zone, @@session.time_zone;
 
-USE db_s2_project_1;
+SET time_zone = '+07:00';
+
 
 CREATE TABLE lecturers(  
     nid         CHAR(10) NOT NULL,

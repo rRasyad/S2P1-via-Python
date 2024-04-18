@@ -4,47 +4,47 @@ import helpers
 import mysql.connector as mysql
 
 
-# The Database class is a parent model 
+# The Database class is a parent model
 # for ease of connection to the database.
 class Database:
 
-    # This constructor defines public attributes 
+    # This constructor defines public attributes
     # such as conn for the database connection and cur for the cursor.
     def __init__(self):
         config = {
             "host": "localhost",
             "user": "root",
             "password": "123",
-            "database": "db_s2_project_1",
+            "database": "db_s2p1",
         }
         self.conn = mysql.connect(**config)
         self.cur = self.conn.cursor()
-        # A cursor in MySQL Connector is an object 
+        # A cursor in MySQL Connector is an object
         # that helps execute queries and fetch records from the database
+        self.cur.execute("SET time_zone = '+07:00'")
         return
 
 
-# The Lecturer class is a child model 
+# The Lecturer class is a child model
 # for the handling of all data related to the lecturer table.
 class Lecturer(Database):
-
     # This consturctor acts as a login process
     def __init__(self, nid, password):
 
         super().__init__()
-        # It is used to call the constructor of the parent class. 
+        # It is used to call the constructor of the parent class.
         # This allows the subclass to inherit and initialize superclass attributes.
 
         q = "SELECT * FROM lecturers WHERE nid = %s"
         self.cur.execute(q, (nid,))
         result = self.cur.fetchone()
-        helpers.console_log(result) # Print the value in debug mode
+        helpers.console_log(result)  # Print the value in debug mode
 
-        if result is None: # case when user not found
-            self.status = None
+        if result is None:  # case when user not found
+            self.login_status = None
             return
-        elif password != result[-1]: # case when password incorect
-            self.status = False
+        elif password != result[-1]:  # case when password incorect
+            self.login_status = False
             return
         else:
             (
@@ -55,11 +55,11 @@ class Lecturer(Database):
                 self.__email,
                 self.__adress,
                 self.__password,
-            ) = result # insert all data to private attributes
-            self.status = True
+            ) = result  # insert all data to private attributes
+            self.login_status = True
             return
 
-    # Properties provide a way to encapsulate access 
+    # Properties provide a way to encapsulate access
     # to instance variables, enabling validation and computation on access.
     # Property getter
     @property
@@ -86,8 +86,16 @@ class Lecturer(Database):
     def adress(self):
         return self.__adress
 
+    @property
+    def classes(self):
+        return self.__classes
+
+    @classes.setter
+    def classes(self, selected_class):
+        self.__classes = selected_class
+        return
+
     # Property setter
-    @property.setter
     def set_password(self, old, new):
         if old != self.__password:
             return False
@@ -104,59 +112,62 @@ class Lecturer(Database):
         self.conn.commit()
         return
 
-    def get_class(self):
+    def __get_class(self):
         q = "SELECT * FROM classes WHERE nid = %s"
         self.cur.execute(q, (self.__nid,))
         results = self.cur.fetchall()
-        # helpers.console_log(results)  # Print the result
+        helpers.console_log(results)
 
         classes = []
+        # This code will reconstruct the data using obejct
         for result in results:
             classes.append({"class_id": result[0], "class_name": result[2]})
         return classes
 
-    def get_class_list(self):
-        class_list = self.get_class()
+    def print_class_list(self):
+        class_list = self.__get_class()
 
         for i, item in enumerate(class_list):
             print(f"{i + 1}.", item["class_name"])
 
         return class_list
 
-    def get_today_attendance(self, class_id):
+    def get_today_attendance(self):
         q = """
         SELECT timestamp
         FROM lecturer_attendance
         WHERE DATE(timestamp) = CURRENT_DATE
         AND class_id = %s
         AND nid = %s"""
-        self.cur.execute(q, (class_id, self.__nid))
+        self.cur.execute(q, (self.__classes["class_id"], self.__nid))
         result = self.cur.fetchone()
+        helpers.console_log(result)
         if result is None:
             return result
         else:
             return result[0].strftime("%H:%M")
 
-    def store_today_attendance(self, class_id):
+    def store_today_attendance(self):
         q = """INSERT INTO
         lecturer_attendance (class_id, nid)
         VALUES (%s, %s)"""
-        self.cur.execute(q, (class_id, self.__nid))
+        self.cur.execute(q, (self.__classes["class_id"], self.__nid))
         self.conn.commit()
-        return self.get_today_attendance(class_id)
+        return self.get_today_attendance()
 
-    def get_students(self, class_id):
+    def get_students(self):
         q = """
         SELECT nis, full_name
         FROM students
         WHERE class_id = %s
         ORDER BY full_name"""
-        self.cur.execute(q, (class_id,))
+        self.cur.execute(q, (self.__classes["class_id"],))
         results = self.cur.fetchall()
 
         student_list = []
         for result in results:
             student_list.append({"nis": result[0], "full_name": result[1]})
+        helpers.console_log(student_list)
         return student_list
 
     def get_student_detail(self, nis):
@@ -166,9 +177,11 @@ class Lecturer(Database):
         WHERE nis = %s
         """
         self.cur.execute(q, (nis,))
-        return self.cur.fetchone()
+        result = self.cur.fetchone()
+        helpers.console_log(result)
+        return result
 
-    def get_student_overview(self, nis):
+    def __get_student_overview(self, nis):
         q = """
         SELECT 
         SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) AS attend_count,
@@ -180,10 +193,15 @@ class Lecturer(Database):
         """
         self.cur.execute(q, (nis,))
         results = self.cur.fetchone()
+        helpers.console_log(results)
+        return results
 
-        Attend = 0 if results[0] is None else results[0]
-        Sick = 0 if results[1] is None else results[1]
-        Permit = 0 if results[2] is None else results[2]
+    def print_student_overview(self, nis):
+        overviews = self.__get_student_overview(nis)
+
+        Attend = 0 if overviews[0] is None else overviews[0]
+        Sick = 0 if overviews[1] is None else overviews[1]
+        Permit = 0 if overviews[2] is None else overviews[2]
         absent = calendar.monthrange(datetime.now().year, datetime.now().month)[1] - (
             Attend + Sick + Permit
         )
@@ -194,8 +212,9 @@ class Lecturer(Database):
                 Attend, Sick, Permit, absent
             ),
         )
+        return
 
-    def get_attendance(self, date, class_id):
+    def get_attendance(self, date):
         q = """SELECT 
         COALESCE(sa.sa_id, null) as id,
         s.nis as nis, 
@@ -208,12 +227,12 @@ class Lecturer(Database):
         AND DATE(sa.timestamp) = DATE(%s)
         WHERE s.class_id = %s
         """
-        self.cur.execute(q, (date, class_id))
+        self.cur.execute(q, (date, self.__classes["class_id"]))
         results = self.cur.fetchall()
-        # helpers.console_log(results)
+        helpers.console_log(results)
         return results
 
-    def get_attendance_overview(self, date, class_id, student_count):
+    def __get_attendance_overview(self, date):
         q = """
         SELECT 
         SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) AS attend_count,
@@ -224,13 +243,17 @@ class Lecturer(Database):
         WHERE s.class_id = %s
         AND DATE(timestamp) = %s
         """
-        self.cur.execute(q, (class_id, date))
+        self.cur.execute(q, (self.__classes["class_id"], date))
         results = self.cur.fetchone()
-        # print(results, class_id, date)
+        helpers.console_log(results)
+        return results
 
-        Attend = 0 if results[0] is None else results[0]
-        Sick = 0 if results[1] is None else results[1]
-        Permit = 0 if results[2] is None else results[2]
+    def print_attendance_overview(self, date, student_count):
+        overviews = self.__get_attendance_overview(date)
+
+        Attend = 0 if overviews[0] is None else overviews[0]
+        Sick = 0 if overviews[1] is None else overviews[1]
+        Permit = 0 if overviews[2] is None else overviews[2]
         absent = student_count - (Attend + Sick + Permit)
 
         print(
@@ -239,6 +262,7 @@ class Lecturer(Database):
                 Attend, Sick, Permit, absent
             ),
         )
+        return
 
     def update_attendace(self, status, sa_id, date):
         q = """
@@ -265,8 +289,8 @@ class Lecturer(Database):
 
 class main:
     # def __init__(self):
-    #     self.cu = Lecturer("0885060416", "123")
-    #     self.cc = {"class_id": "2CS1", "class_name": "2 CS 1"}
+    #     self.cu = Lecturer("0885060416", "12346")
+    #     self.cu.classes = {"class_id": "2CS1", "class_name": "2 CS 1"}
 
     def login_section(self):
         print("-- LOGIN --\n")
@@ -274,8 +298,12 @@ class main:
         pw = input("Insert password: ")
 
         helpers.clear_terminal()
+
+        # Calling the lecturer class,
+        # the constructor in this class will run the login process,
+        # and auto-populate the attributes in this class with the existing data.
         self.cu = Lecturer(id, pw)
-        match self.cu.status:
+        match self.cu.login_status:
             case True:
                 print("Login successfully!\n")
                 return self.class_section()
@@ -289,7 +317,7 @@ class main:
     def class_section(self):
         print("-- AVAILABLE CLASS --\n")
 
-        available_classes = self.cu.get_class_list()
+        available_classes = self.cu.print_class_list()
         class_count = len(available_classes)
         option = "\n[{}] choose one\n> ".format(
             "1" if class_count <= 1 else f"1 - {class_count}"
@@ -301,14 +329,20 @@ class main:
             print("Invalid!\n")
             return self.class_section()
 
-        self.cc = available_classes[(choice - 1)]
-        # helpers.console_log(self.cc)  # Print the result
+        # Change the contents of the attribute
+        # by calling the set property class with the selected class
+        self.cu.classes = available_classes[(choice - 1)]
+        helpers.console_log(self.cu.classes)
         return self.main_menu_section()
 
     def main_menu_section(self):
-        today_attendance = self.cu.get_today_attendance(self.cc["class_id"])
+        # The code below will check whether the user
+        # has been absent or not from the database.
+        # if the user has not been absent,
+        # the system will automatically save today's attendance time.
+        today_attendance = self.cu.get_today_attendance()
         if today_attendance is None:
-            today_attendance = self.cu.store_today_attendance(self.cc["class_id"])
+            today_attendance = self.cu.store_today_attendance()
             message = "Your attendance has been recorded!"
         else:
             message = "You have already recorded your attendance for today."
@@ -317,7 +351,7 @@ class main:
             "-- MAIN MENU --",
             "Welcome, {}!\n".format(self.cu.full_name),
             "TODAY ATTENDANCE IN CLASS {}: {}".format(
-                self.cc["class_name"], today_attendance
+                self.cu.classes["class_name"], today_attendance
             ),
             message + "\n",
             "1. Student Attendance",
@@ -353,8 +387,7 @@ class main:
             "CLASS LIST",
             sep="\n",
         )
-        self.cu.get_class_list()
-        # TODO Create An Overview for this month
+        self.cu.print_class_list()
 
         choice = input(
             "\n[ctrl + c] to exit\n[0] back to main menu\n[r] to reset password\n> "
@@ -376,7 +409,7 @@ class main:
         conf = input("Password confirmation: ")
 
         helpers.clear_terminal()
-        if new != conf:
+        if new != conf:  # case when password and confirmation doesn't macth
             print("\nPassword not match!")
         else:
             result = self.cu.set_password(old, new)
@@ -388,9 +421,9 @@ class main:
         return self.reset_password_section()
 
     def student_list_section(self):
-        print(f"-- LIST STUDENT IN {self.cc['class_name']} --\n")
+        print(f"-- LIST STUDENT IN {self.cu.classes['class_name']} --\n")
 
-        available_students = self.cu.get_students(self.cc["class_id"])
+        available_students = self.cu.get_students()
         for i, item in enumerate(available_students):
             print(f"{(i + 1):2}.", item["full_name"])
 
@@ -424,7 +457,7 @@ class main:
             sep="\n",
         )
 
-        self.cu.get_student_overview(nis)
+        self.cu.print_student_overview(nis)
 
         choice = int(
             input(
@@ -452,6 +485,8 @@ class main:
         selected_date = None
         try:
             inputed_date = input("> ")
+            # Handle if the user does not input anything,
+            # it will automatically retrieve today.
             selected_date = (
                 datetime.strptime(inputed_date, "%d/%m/%Y")
                 if inputed_date
@@ -461,12 +496,17 @@ class main:
             pass
 
         helpers.clear_terminal()
+
+        # Handle if an incorrect format is entered
         if selected_date is None:
             print("Only this [dd/mm/yyyy] format are allowed\n")
             pass
+
+        # Handle if the entered date is in the future
         elif selected_date > datetime.now():
             print("The date must be past or today\n")
             pass
+
         else:
             return self.student_attandence_section2(selected_date)
 
@@ -478,11 +518,11 @@ class main:
             "Attendance date: {}".format(date.strftime("%d %B %Y")),
         )
 
-        students = self.cu.get_attendance(date, self.cc["class_id"])
+        students = self.cu.get_attendance(date)
         student_count = len(students)
-        self.cu.get_attendance_overview(date.date(), self.cc["class_id"], student_count)
+        self.cu.print_attendance_overview(date.date(), student_count)
 
-        print("\nList of students in class: {}".format(self.cc["class_name"]))
+        print("\nList of students in class: {}".format(self.cu.classes["class_name"]))
         for i, item in enumerate(students):
             match item[3]:
                 case 0:
@@ -550,17 +590,19 @@ class main:
 
         for item in selected:
             if choice == 4:
+                # Delete data that has an id
                 if item[0] is not None:
-                    # Delete
-                    # print("delete", item)
+                    helpers.console_log("delete", item)
                     self.cu.delete_attendance(item[0])
 
+                # Skip data that does not have an id
                 else:
-                    # print("pass", item)
-                    # Biarin
+                    helpers.console_log("pass", item)
                     pass
 
             else:
+                # Handles if the date entered is today, 
+                # it will take time when entering attendance.
                 date = datetime.now() if date.date() == datetime.now().date() else date
                 match choice:
                     case 1:
@@ -570,18 +612,17 @@ class main:
                     case 3:
                         status = 2
 
+                # If there is an id, the existing data will be updated, 
+                # otherwise it will save the data to the database.
                 if item[0] is None:
-                    # Store
-                    # print("insert", status, item)
+                    helpers.console_log("insert", status, item)
                     self.cu.store_attendance(status, item[1], date)
 
                 else:
-                    # Update
-                    # print("update", status, item)
+                    helpers.console_log("update", status, item)
                     self.cu.update_attendace(status, item[0], date)
 
         return self.student_attandence_section2(date)
-        # return self.main_menu_section()
 
 
 if __name__ == "__main__":
@@ -590,8 +631,10 @@ if __name__ == "__main__":
         program = main()
         program.login_section()
 
+    # handling inputs
     except ValueError:
         print("Only integers are allowed")
+    # Dealing with forced stop programs
     except KeyboardInterrupt:
         print("Goodbye!")
     except Exception as e:

@@ -1,4 +1,4 @@
-DEBUG = False
+DEBUG = True
 
 def clear_terminal():
     print("\033c")
